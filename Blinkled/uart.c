@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <stdio.h>
+#include <avr/sfr_defs.h>
 
 #ifndef F_CPU
 #define F_CPU 16000000UL
@@ -18,7 +19,7 @@ void uart_init(void) {
 	UBRR0H = UBRRH_VALUE; // UART speed high.
 	UBRR0L = UBRRL_VALUE; // UART speed low.
 
-	// configuring UART register
+	// FROM IO PORTS : configuring UART register
 	//#define UCSR0A _SFR_MEM8(0xC0)
 	//#define MPCM0 0
 	//#define U2X0 1
@@ -51,4 +52,46 @@ void uart_putchar(char c, FILE *stream) {
 char uart_getchar(FILE *stream) {
 	loop_until_bit_is_set(UCSR0A, RXC0);
 	return UDR0;
+}
+
+/* From book: Make: Avr programming */
+
+void transmitByte(uint8_t data) {
+	/* Wait for empty transmit buffer */
+	loop_until_bit_is_set(UCSR0A, UDRE0);
+	UDR0 = data; /* send data */
+}
+uint8_t receiveByte(void) {
+	loop_until_bit_is_set(UCSR0A, RXC0); /* Wait for incoming data */
+	return UDR0; /* return register value */
+}
+
+// Example of a useful printing command
+/*
+		printString("==[ Cap Sensor ]==\r\n\r\n");
+*/
+void printString(const char myString[]) {
+	uint8_t i = 0;
+	while (myString[i]) {
+		transmitByte(myString[i]);
+		i++;
+	}
+}
+
+void printByte(uint8_t byte){
+	/* Converts a byte to a string of decimal text, sends it */
+	transmitByte('0'+ (byte/100)); /* Hundreds */
+	transmitByte('0'+ ((byte/10) % 10)); /* Tens */
+	transmitByte('0'+ (byte % 10)); /* Ones */
+}
+
+void printBinaryByte(uint8_t byte){
+	/* Prints out a byte as a series of 1's and 0's */
+	uint8_t bit;
+	for (bit=7; bit < 255; bit--){
+		if ( bit_is_set(byte, bit) )
+		transmitByte('1');
+		else
+		transmitByte('0');
+	}
 }
